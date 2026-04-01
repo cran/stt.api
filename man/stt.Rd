@@ -1,0 +1,59 @@
+% tinyrox says don't edit this manually, but it can't stop you!
+\name{stt}
+\alias{stt}
+\title{Speech to Text}
+\usage{
+stt(file, model = NULL, language = NULL,
+    response_format = c("json", "text", "verbose_json"),
+    backend = c("auto", "whisper", "openai"), prompt = NULL)
+}
+\arguments{
+\item{file}{Path to the audio file to convert.}
+
+\item{model}{Model name to use for transcription. For API backends, this
+is passed directly (e.g., "whisper-1"). For whisper, this is
+the model size (e.g., "tiny", "base", "small", "medium", "large").
+If NULL, uses the backend's default.}
+
+\item{language}{Language code (e.g., "en", "es", "fr"). Optional hint
+to improve transcription accuracy.}
+
+\item{response_format}{Response format for API backend. One of "text",
+"json", or "verbose_json". Ignored for whisper backend.}
+
+\item{backend}{Which backend to use: "auto" (default), "whisper",
+or "openai". Auto mode tries whisper first, then openai API
+(if configured).}
+
+\item{prompt}{Optional text to guide the transcription. For API backend,
+this is passed as initial_prompt to help with spelling of names,
+acronyms, or domain-specific terms. Ignored for whisper backend.}
+}
+\value{
+A list with components:
+\describe{
+  \item{text}{The transcribed text as a single string.}
+  \item{segments}{A data.frame of segments with timing info, or NULL.}
+  \item{language}{The detected or specified language code.}
+  \item{backend}{Which backend was used ("api" or "whisper").}
+  \item{raw}{The raw response from the backend.}
+}
+}
+\description{
+Convert an audio file to text using a local whisper backend or
+an OpenAI-compatible API.
+}
+\examples{
+\dontrun{
+# Using OpenAI API
+set_stt_base("https://api.openai.com")
+set_stt_key(Sys.getenv("OPENAI_API_KEY"))
+result <- stt("speech.wav", model = "whisper-1")
+result$text
+
+# Using local server
+set_stt_base("http://localhost:4123")
+result <- stt("speech.wav")
+}
+
+}
