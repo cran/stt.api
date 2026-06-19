@@ -1,5 +1,7 @@
 # stt.api
 
+[![CRAN status](https://www.r-pkg.org/badges/version/stt.api)](https://CRAN.R-project.org/package=stt.api)
+
 **`stt.api`** is a minimal, backend-agnostic R client for **OpenAI-compatible speech-to-text (STT) APIs**, with optional local fallbacks.
 
 It lets you transcribe audio in R **without caring which backend actually performs the transcription**.
@@ -13,7 +15,8 @@ It lets you transcribe audio in R **without caring which backend actually perfor
 * A unified interface for speech-to-text in R
 * A way to switch easily between:
 
-  * `{whisper}` (native R torch, local GPU/CPU)
+  * `{whisper}` (native R torch, local GPU/CPU, in-process)
+  * a self-hosted `whisper::serve()` endpoint over HTTP (`source = "api"`)
   * OpenAI `/v1/audio/transcriptions` (cloud or local servers)
 * Designed for scripting, Shiny apps, containers, and reproducible pipelines
 
@@ -30,7 +33,7 @@ It lets you transcribe audio in R **without caring which backend actually perfor
 ## Installation
 
 ```r
-remotes::install_github("cornball-ai/stt.api")
+install.packages("stt.api")
 ```
 
 Required dependencies are minimal:
@@ -42,13 +45,18 @@ Optional backends:
 
 * `{whisper}` (recommended, on CRAN)
 
+Development version:
+
+```r
+remotes::install_github("cornball-ai/stt.api")
+```
+
 ---
 
 ## Quick start
 
 ```r
-install.packages("whisper")
-remotes::install_github("cornball-ai/stt.api")
+install.packages(c("whisper", "stt.api"))
 
 library(stt.api)
 
@@ -74,6 +82,19 @@ res <- stt("speech.wav", backend = "openai")
 
 This works with OpenAI, Whisper containers, LM Studio, OpenWebUI, AnythingLLM, or any server implementing `/v1/audio/transcriptions`.
 
+### Where the engine runs: the `source` axis
+
+`source` selects *where* a backend runs, separately from `backend` (*which*
+engine): `"auto"` (default), `"api"` (HTTP), or `"package"` (in-process).
+`"auto"` keeps the previous behavior — whisper in-process, openai via the API —
+so existing calls are unchanged. To reach a self-hosted `whisper::serve()`
+endpoint instead of running whisper in-process:
+
+```r
+set_stt_base("http://troy-g5:7809")          # the whisper::serve() endpoint
+res <- stt("speech.wav", backend = "whisper", source = "api")
+```
+
 ---
 
 ## Automatic backend selection
@@ -94,11 +115,17 @@ Regardless of backend, `stt()` always returns the same structure:
 list(
   text     = "Transcribed text",
   segments = NULL | data.frame(...),
+  words    = data.frame(word, start, end),  # only with word-level timing
   language = "en",
-  backend  = "api" | "whisper",
+  backend  = "api" | "whisper",             # legacy execution route
   raw      = <raw backend response>
 )
 ```
+
+`words` is present only when the API returns word granularity (`verbose_json`);
+otherwise it's absent. `backend` reports *where* the engine ran (the legacy
+execution route), not the engine itself: the resolved `backend`/`source` pair
+lives in the `"call_record"` attribute.
 
 This makes it easy to switch backends without changing downstream code.
 
